@@ -1,6 +1,4 @@
 # img2js
-===
-
 Toolkit for CreateJS（以下、TFC）で書きだした複数の画像をbase64化して、1個のJavaScriptファイルに纏めるツールです。
 
 ## 使い方
