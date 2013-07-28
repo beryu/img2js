@@ -97,7 +97,7 @@ public class Img2Js extends JDialog {
     }
 
     private String generateJsFromImagesDir(File srcDir) {
-        String jsText = "(function(package){var img;";
+        String jsText = "(function(p){var i;";
         BufferedImage bfImage;
         File[] fileList = srcDir.listFiles();
         File workFile;
@@ -136,9 +136,9 @@ public class Img2Js extends JDialog {
                 System.out.println(e);
             }
 
-            jsText += "img=new Image();img.src='data:image/" + extensionStr + ";base64,";
+            jsText += "i=new Image();i.src='data:image/" + extensionStr + ";base64,";
             jsText += Base64.encode(baos.toByteArray());
-            jsText += "';package['" + fileNameWOExtensionStr + "']=img;";
+            jsText += "';p['" + fileNameWOExtensionStr + "']=i;";
         }
 
         jsText += "})(window.images = window.images || {});";
