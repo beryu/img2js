@@ -11,7 +11,7 @@ Toolkit for CreateJS（以下、TFC）で書きだした複数の画像をbase64
 5. OKボタンを押下
 6. 保存先を選択  
 ![スクリーンショット3](./images/ss3.png)
-6. TFCで出力したHTMLファイルのmanifest変数を以下のように書き換える
+7. TFCで出力したHTMLファイルのmanifest変数を以下のように書き換える
 
 ```
 var manifest = ['/PATH/TO/images.js'];
