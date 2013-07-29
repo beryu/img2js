@@ -2,7 +2,7 @@
 Toolkit for CreateJS（以下、TFC）で書きだした複数の画像をbase64化して、1個のJavaScriptファイルに纏めるツールです。
 
 ## 使い方
-1. img2js/out/artifacts/img2js_jar/img2js.jar をダウンロード
+1. img2js/out/artifacts/img2js_jar/img2js.jar をダウンロード [[direct link](https://github.com/beryu/img2js/blob/master/out/artifacts/img2js_jar/img2js.jar?raw=true)]
 2. ダウンロードした img2js.jar をダブルクリック  
 ![スクリーンショット1](./images/ss1.png)
 3. [Browse...]ボタンを押下
