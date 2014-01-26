@@ -5,27 +5,61 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Img2Js extends JDialog {
     // instance variables
-    private File selectedDirSrc;
-    private String srcDirPath;
+    private File srcDirFile;
+    private String srcDirStr;
+    private static final String CONFIG_FILE = "img2js_config.ini";
+    private Map<String, String> configMap;
 
     // components
     private JPanel contentPane;
-    private JButton buttonOK;
+    private JButton buttonSave;
     private JButton buttonCancel;
     private JTextField labelSrcDirPath;
     private JButton buttonBrowseSrc;
+    private JTextField namespace;
 
+    /**
+     * コンストラクタ
+     */
     public Img2Js() {
+        // load config
+        configMap = loadConfig();
+
+        // initialize
         setContentPane(contentPane);
         setModal(true);
-        getRootPane().setDefaultButton(buttonOK);
+        getRootPane().setDefaultButton(buttonSave);
 
-        buttonOK.addActionListener(new ActionListener() {
+        // 画像ディレクトリの場所を設定から読み込む（設定が存在しなければ空欄にする）
+        srcDirStr = configMap.get("srcDirStr");
+        if (srcDirStr != null) {
+            // ファイルオブジェクトを生成
+            srcDirFile = new File(srcDirStr);
+            if (srcDirFile.exists()) {
+                // パスをテキストフィールドに書き込む
+                labelSrcDirPath.setText(srcDirStr);
+
+                // Saveボタンを活性化
+                buttonSave.setEnabled(true);
+            }
+        }
+
+        // 名前空間を設定から読み込む（設定が存在しなければCreateJSのデフォルト（images）にする
+        String namespaceStr = configMap.get("imageNamespaceStr");
+        if (namespaceStr != null) {
+            namespace.setText(namespaceStr);
+        } else {
+            namespace.setText("images");
+        }
+
+        buttonSave.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                onOK();
+                onSave();
             }
         });
 
@@ -57,35 +91,114 @@ public class Img2Js extends JDialog {
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
-    private void onOK() {
+    /**
+     * メインウィンドウの[Save]ボタンのクリックイベントハンドラ
+     */
+    private void onSave() {
         // base64に変換したJSファイルを保存
-        String result = generateJsFromImagesDir(selectedDirSrc);
-        generateFileFromStr(result);
+        Boolean result = generateJSFile();
 
-        // 通知
-        JOptionPane.showMessageDialog(this, "JavaScript file was generated.");
+        // 成功したなら設定を保存して終了
+        if (result) {
+            configMap.put("srcDirStr", srcDirStr);
+            configMap.put("imageNamespaceStr", namespace.getText());
+            saveConfig(configMap);
+            dispose();
+        }
+    }
 
+    /**
+     * 設定ファイルをロードする
+     * @return 設定が格納されたMapインスタンス
+     */
+    private Map<String, String> loadConfig() {
+        File configFile = new File(CONFIG_FILE);
+        Map<String, String> configMap = new HashMap<String, String>();
+
+        // 設定ファイルがなかったら作る
+        if (!configFile.exists()) {
+            saveConfig(configMap);
+        }
+
+        try {
+            FileReader fr = new FileReader(configFile);
+            BufferedReader br = new BufferedReader(fr);
+            String line;
+            while ((line = br.readLine()) != null) {
+                int i = line.indexOf('=');
+                if (i < 0) {
+                    continue;
+                }
+                configMap.put(line.substring(0, i), line.substring(i + 1));
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return configMap;
+    }
+
+    /**
+     * 設定ファイルを保存する
+     * @param configMap 保存対象の設定が格納されたMapインスタンス
+     */
+    private void saveConfig(Map<String, String> configMap) {
+        File configFile = new File(CONFIG_FILE);
+
+        try {
+            FileWriter fw = new FileWriter(configFile);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            if (!configMap.isEmpty()) {
+                Object[] keyArr = configMap.keySet().toArray();
+
+                for (Object key:keyArr) {
+                    bw.write(key.toString() + "=" + configMap.get(key));
+                    bw.newLine();
+                }
+            }
+            bw.close();
+            fw.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * メインウィンドウの[cancel]ボタンのクリックイベントハンドラ
+     */
+    private void onCancel() {
         // 終了
         dispose();
     }
 
-    private void onCancel() {
-        dispose();
-    }
-
+    /**
+     * メインウィンドウの[Browse...]ボタンのクリックイベントハンドラ
+     */
     private void onBrowseSrc() {
-        JFileChooser fileChooser = new JFileChooser();
+        String defaultPath = null;
+
+        // set default path if file selected.
+        if (srcDirStr != null) {
+            defaultPath = srcDirStr;
+            defaultPath = defaultPath.substring(0, defaultPath.lastIndexOf("/"));
+        }
+
+        JFileChooser fileChooser = new JFileChooser(defaultPath);
         fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         int selected = fileChooser.showOpenDialog(this);
         switch (selected) {
             case JFileChooser.APPROVE_OPTION:
                 // ディレクトリが選択された→パスを記憶
-                selectedDirSrc = fileChooser.getSelectedFile();
-                srcDirPath = selectedDirSrc.getPath();
-                labelSrcDirPath.setText(srcDirPath);
+                srcDirFile = fileChooser.getSelectedFile();
+                srcDirStr = srcDirFile.getPath();
 
-                // OKボタンを活性化
-                buttonOK.setEnabled(true);
+                // メインウィンドウのテキストフィールドにパスを表示
+                labelSrcDirPath.setText(srcDirStr);
+
+                // Saveボタンを活性化
+                buttonSave.setEnabled(true);
+
                 break;
             case JFileChooser.CANCEL_OPTION:
                 // キャンセルされた→何もしない
@@ -96,6 +209,11 @@ public class Img2Js extends JDialog {
         }
     }
 
+    /**
+     * 指定されたディレクトリからbase64化したJavaScriptテキストを生成
+     * @param srcDir base64化したい画像が入ったディレクトリのパス
+     * @return 全画像をbase64化したJavaScriptテキスト
+     */
     private String generateJsFromImagesDir(File srcDir) {
         String jsText = "(function(p){var i;";
         BufferedImage bfImage;
@@ -108,6 +226,7 @@ public class Img2Js extends JDialog {
         String fileNameWOExtensionStr;
         String extensionStr;
         int dotIndex;
+        String namespaceStr = namespace.getText();
 
         for (int i = 0; i < fileCnt; i++) {
             workFile = fileList[i];
@@ -141,15 +260,28 @@ public class Img2Js extends JDialog {
             jsText += "';p['" + fileNameWOExtensionStr + "']=i;";
         }
 
-        jsText += "})(window.images = window.images || {});";
+        jsText += "})(window." + namespaceStr + " = window." + namespaceStr + " || {});";
         jsText = jsText.replace("\r","");
         jsText = jsText.replace("\n","");
 
         return jsText;
     }
 
-    private void generateFileFromStr(String body) {
-        JFileChooser fileChooser = new JFileChooser();
+    /**
+     * JavaScriptファイルを生成
+     * @return 操作が成功したか否かのフラグ(成功したらtrue)
+     */
+    private Boolean generateJSFile() {
+        String defaultPath = null;
+        Boolean isSuccess = false;
+
+        // set default path.
+        if (srcDirStr != null) {
+            defaultPath = srcDirStr;
+            defaultPath = defaultPath.substring(0, defaultPath.lastIndexOf("/"));
+        }
+
+        JFileChooser fileChooser = new JFileChooser(defaultPath);
         FileWriter fileWriter;
         BufferedWriter bfWriter;
         int selected = fileChooser.showSaveDialog(this);
@@ -160,11 +292,16 @@ public class Img2Js extends JDialog {
                 try {
                     fileWriter = new FileWriter(saveFile);
                     bfWriter = new BufferedWriter(fileWriter);
-                    bfWriter.write(body);
+                    bfWriter.write(generateJsFromImagesDir(srcDirFile));
                     bfWriter.close();
                 } catch (IOException e) {
                     System.out.println(e);
                 }
+
+                // 正常に書き出されたことを通知
+                JOptionPane.showMessageDialog(this, "JavaScript file was generated.");
+                isSuccess = true;
+
                 break;
             case JFileChooser.CANCEL_OPTION:
                 // キャンセルされた→何もしない
@@ -173,6 +310,8 @@ public class Img2Js extends JDialog {
                 // エラー発生→何もしない
                 break;
         }
+
+        return isSuccess;
     }
 
     public static void main(String[] args) {
